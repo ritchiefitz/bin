@@ -1,0 +1,15 @@
+#!/usr/bin/env ruby
+def read_newline_data(file_path)
+    array = []
+    File.open(file_path, "r").each_line{|line| array << line.strip}
+    return array
+end
+
+if __FILE__ == $0
+    command = ARGV[0]
+    lines = read_newline_data(ARGV[1])
+
+    lines.each do |line|
+      system "#{command} #{line}"
+    end
+end

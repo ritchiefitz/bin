@@ -1,0 +1,44 @@
+#!/usr/bin/env ruby
+require "nokogiri"
+require "open-uri"
+require "imdb_poster"
+
+def inside_strip(string)
+	return string.gsub("\n", "").gsub("\t", "").gsub("  ", " ")
+end
+
+def correct_address(search)
+	return search.gsub("+", "%2B").gsub("^", "%5E").gsub(" ", "+").gsub(",", "%2C")
+end
+
+def main()
+	movie_url = "http://www.google.com/movies"
+
+	if ARGV[0]
+		near = "?near=" + correct_address(ARGV[0])
+		movie_url += near
+		# puts movie_url
+	end
+
+	noko = Nokogiri::HTML(open(movie_url))
+
+	noko.css("div.theater").each do |theater|
+		theater_name = theater.css("h2.name")[0].text
+		puts theater_name
+		# puts theater
+		theater.css(".showtimes .movie").each do |movie|
+			movie_name = inside_strip(movie.css(".name")[0].text)
+			movie_info = inside_strip(movie.css(".info")[0].text)
+			movie_times = inside_strip(movie.css(".times > span").map{|time| time.text}.join(" ").gsub("&nbsp", ""))
+			puts " -#{movie_name}"
+			puts "     Info: #{movie_info}"
+			puts "     Showtimes: #{movie_times}"
+			puts
+			# ImdbPoster.download(movie.text, "movie_posters/")
+		end
+	end
+end
+
+if __FILE__ == $0
+	main()
+end

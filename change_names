@@ -1,0 +1,89 @@
+#!/usr/bin/env ruby
+
+def choose_directories(new_name=false, file_ext="*", opts)
+
+    if opts[:current_directory] or opts[:both_directories]
+        new_name = File.basename(Dir.getwd) unless opts[:use_custom_name]
+        change_function(new_name, file_ext, opts)
+    end
+
+    if opts[:recursive_directory] or opts[:both_directories]
+        directories = Dir.glob("**").select{|f| File.directory? f}
+
+        directories.each do |directory|
+            puts directory
+            Dir.chdir(directory) do
+                # puts directory
+                new_name = directory unless opts[:use_custom_name]
+                change_function(new_name, file_ext, opts)
+            end
+        end
+    end
+end
+
+def change_function(new_name, file_ext, opts)
+    unless file_ext == "*"
+        change_name(new_name, file_ext)
+    else
+        change_name(new_name)
+    end
+end
+
+def change_name(new_name, file_ext="*")
+    Dir.glob("*.{#{file_ext}}").each_with_index{|file, i| File.rename(file, "#{new_name}-#{i+1}.#{file[file.rindex('.')+1..-1]}")}
+end
+
+def print_consequences(new_name, file_ext, opts)
+    puts 
+    puts "Files to be affected"
+    puts "--------------------------------------"
+    puts "Custom Name <#{new_name}> will be used." if opts[:use_custom_name]
+    puts "Files that match <*.#{file_ext}> will be changed."
+    puts "Files in Current Directory will be affected." if opts[:current_directory]
+    puts "Files in Children Directories will be affected." if opts[:recursive_directory]
+    puts "Files in Current and Children Directories will be affected." if opts[:both_directories]
+    puts "--------------------------------------"
+    puts
+    print "Would you still like to make the changes (y/n)? "
+    # choice = $stdin.gets.chomp
+
+    return $stdin.gets.chomp == "y" ? true : false
+end
+
+def main()
+
+    if ARGV[0]
+        opts = {}
+        opts[:use_custom_name] = ARGV.any?{|arg| arg == "-n"}
+        opts[:use_extension] = ARGV.any?{|arg| arg == "-ext"}
+        opts[:recursive_directory] = ARGV.any?{|arg| arg == "-r"}
+        opts[:current_directory] = ARGV.any?{|arg| arg == "-c"}
+        opts[:both_directories] = (opts[:recursive_directory] or opts[:current_directory]) ? false : true
+
+        new_name = opts[:use_custom_name] ? ARGV[ARGV.index("-n") + 1] : false
+        file_ext = opts[:use_extension] ? ARGV[ARGV.index("-ext") + 1] : "*"
+
+        unless opts[:use_extension]
+            puts "This will change all filenames!!"
+            print "Are you sure you want to continue (y/n)? "
+            # choice = $stdin.gets.chomp
+            exit(0) unless $stdin.gets.chomp == "y"
+        end
+
+        print_consequences(new_name, file_ext, opts) ? choose_directories(new_name, file_ext, opts) : exit(0)
+    else
+        puts "Usuage:"
+        puts
+        puts "\tchange_name <new-name-for-files> <ext>"
+        puts
+        puts "This changes all files that end with jpg"
+        puts "\tchange_name movie jpg"
+        puts
+        puts "This changes all files to new name"
+        puts "\tchange_name movie"
+    end
+end
+
+if __FILE__ == $0
+    main()
+end

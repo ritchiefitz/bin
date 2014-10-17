@@ -1,0 +1,130 @@
+#!/usr/bin/env ruby
+require "gss"
+require "nokogiri"
+require "launchy"
+
+def prompt(results)
+    continue = true
+
+    while continue
+        puts "\nTop Ten Results"
+        puts "----------------------------------"
+        print_top_ten(results)
+
+        begin
+            print "Enter Site Number ex.(1,2,3): "
+            site_choice = $stdin.gets.chomp.to_i
+
+            if site_choice.between?(1, 10)
+                system("clear")
+                system("cls")
+                get_answer(results, results[site_choice-1][:url])
+            else
+                puts "#{site_choice} not a valid choice. Please choose another number."
+            end
+        rescue
+            puts "#{site_choice} not a number! Try Again!"
+        end
+    end
+end
+
+def get_answer(results, url)
+    noko = Nokogiri::HTML(open(url))
+
+    if noko.css("div.accepted-answer").any?
+        votes = noko.css("div.accepted-answer span.vote-count-post")[0].text
+        puts "\nSelected Answer\nVotes: #{votes}"
+        puts "----------------------------------\n"
+        print_answer(noko, "div.accepted-answer div.post-text > *", url)
+
+        if noko.css("div.answer").size > 1
+            votes = noko.css("div.answer:nth-of-type(2) span.vote-count-post")[0].text
+            puts "\nHighest Other Answer\nVotes: #{votes}"
+            puts "----------------------------------\n"
+            print_answer(noko, "div.answer:nth-of-type(2) div.post-text > *", url)
+        end
+        
+        print "Would you like to open the site (y/n)? "
+        open_site(url)
+    elsif noko.css("div.answer").any?
+        votes = noko.css("div.answer:first-of-type span.vote-count-post")[0].text
+        puts "\nOther Answer\nVotes: #{votes}"
+        puts "----------------------------------\n"
+        print_answer(noko, "div.answer:first-of-type div.post-text > *", url)
+        print "Would you like to open the site (y/n)? "
+        open_site(url)
+    end
+
+    user_pleased(results)
+end
+
+def user_pleased(results)
+    continue = true
+    while continue
+        print "\nFind what you were looking for (y/n)? "
+        found = $stdin.gets.chomp
+        case found
+        when "y", "yes", 1
+            exit(0)
+        when "n", "no", 0
+            continue = false
+            system("clear")
+            system("cls")
+            prompt(results)
+        else
+            puts "#{found} is not a choice. Please choose either (y/n)!"
+        end
+    end
+end
+
+def open_site(url)
+    choice = $stdin.gets.chomp
+    case choice
+    when "o", "open", "y", "yes"
+        Launchy.open(url)
+        return true
+    else
+        return false
+    end
+end
+
+def print_top_ten(results)
+    results.each_with_index do |site, i|
+        puts "#{i+1}. Title: " + site[:name].gsub("- Stack Overflow", "")
+        puts "   Description: " + site[:description]
+        puts "\n\n"
+    end
+end
+
+def print_answer(noko, css, url)
+    print "\n"
+    noko.css(css).each_with_index do |e, i|
+        puts e.text
+        if i % 5 == 0 and i != 0
+            print "--MORE--"
+            if open_site(url)
+                break
+            end
+        end
+    end
+    print "\n"
+end
+
+if __FILE__ == $0
+    if ARGV[0]
+        (result, results) = Gss.return_results("stackoverflow.com", ARGV[0])
+
+        if ARGV[1] == "-o" or ARGV[1] == "-open"
+            Launchy.open(result[:url])
+        else
+            get_answer(results, result[:url])
+        end
+
+        user_pleased(results)
+    else
+        puts "USAGE"
+        puts "\tstacko \"how to get the size of an array ruby\"\n\n"
+        puts "\tOR\n\n"
+        puts "\tstacko \"count occurances of a character python\""
+    end
+end

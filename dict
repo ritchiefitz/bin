@@ -1,0 +1,144 @@
+#!/usr/bin/env ruby
+require "nokogiri"
+require "open-uri"
+require "certified"
+
+class Dict
+    attr_accessor :url, :noko, :word_info
+
+
+    ##
+    # INITIALIZE
+    #
+    # Builds the URL. Gets the HTML. Builds information about the word.
+    #
+    # @param word [String] the word we want the definitions for.
+    def initialize(word)
+        @url = "https://www.google.com/search?q=define%3A+#{word}"
+        @noko = correct_site()
+        @word_info = get_definition()
+    end
+
+
+    ##
+    # CORRECT SITE
+    #
+    # This will get the correct URL if user mispelled word.
+    #
+    # @return Nokogiri [Nokogiri] if the word was mispelled use this site.
+    # @return first_site [Nokogiri] if word was spelled correctly use this site.
+    def correct_site()
+        first_site = Nokogiri::HTML(open(@url))
+
+        begin
+            check_spelling = first_site.css("span.spell.ng")[0].text
+        rescue
+            check_spelling = ""
+        end
+
+        if check_spelling != ""
+            @url = "https://www.google.com" + first_site.css("span.spell.ng + a")[0]["href"]
+            return Nokogiri::HTML(open(@url))
+        else
+            return first_site
+        end
+    end
+
+
+    ##
+    # GET DEFINITION
+    #
+    # This builds a hash map containing the types of definitions and
+    # also the definitions.
+    #
+    # @return local_word_info [Hash] holds types of definitions and the definitions.
+    def get_definition()
+        html_def = @noko.css("li.g:first-of-type")
+        local_word_info = Hash.new
+        local_word_info[:title] = html_def.css("h3 span")[0].text
+
+        if local_word_info[:title].ascii_only?
+            local_word_info[:title] = local_word_info[:title].upcase
+        else
+            local_word_info[:title] = make_readable(local_word_info[:title]).upcase
+        end
+
+        local_word_info[:types_definitions] = []
+        html_def.css("tr").each do |e|
+            # puts e
+            if e.to_s =~ /<div/
+                definitions = Hash.new
+                definitions[:type] = e.css("div")[0].text.upcase
+                definitions[:definitions] = []
+                e.css("li").each do |li|
+                    definitions[:definitions] << li.text
+                end
+                local_word_info[:types_definitions] << definitions
+            end
+        end
+
+        return local_word_info
+    end
+
+
+    ##
+    # MAKE READABLE
+    #
+    # Makes a string containing UTF-8 characters readable.
+    #
+    # @param string [String] is the string that needs to be edited.
+    # @return string [String] not containing UTF-8 encodings.
+    def make_readable(string)
+        # See String#encode
+      encoding_options = {
+        :invalid           => :replace,  # Replace invalid byte sequences
+        :undef             => :replace,  # Replace anything not defined in ASCII
+        :replace           => '',        # Use a blank for those replacements
+        :universal_newline => true       # Always break lines with \n
+      }
+      return string.encode(Encoding.find('ASCII'), encoding_options)
+    end
+
+
+    ##
+    # PRINT DEFINITION
+    #
+    # This will print out all the info we have in word_info.
+    #
+    def print_definition()
+        puts "Definition"
+        puts "----------------------------------------"
+        puts @word_info[:title], " "
+        @word_info[:types_definitions].each do |type|
+            puts "\t" + type[:type]
+            type[:definitions].each_with_index do |defintion, i|
+                puts "\t   #{i+1}. #{defintion}"
+            end
+            print "\n"
+        end
+    end
+
+
+    ##
+    # PRINT HTML DEFINITION
+    #
+    # This is used to print out what the first thing you are
+    # getting is.
+    #
+    def print_html_definition()
+        @noko.css("li.g:first-of-type").each {|e| puts e}
+    end
+
+end
+
+if __FILE__ == $0
+    if ARGV[0]
+        dict = Dict.new(ARGV[0])
+        dict.print_definition
+    else
+        puts "USAGE"
+        puts "\tdict hi\n\n"
+        puts "\tOR\n\n"
+        puts "\tdict world"
+    end
+end

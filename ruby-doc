@@ -1,0 +1,159 @@
+#!/usr/bin/env ruby
+
+##
+# GET FUNCTION
+#
+# description...
+#
+# @param line [type] description...
+# @param file_data [type] description...
+# @param i [type] description...
+# @return function [type] description...
+def get_function(line, file_data, i)
+    space = get_space(line)
+    function = ""
+    check_end = ""
+
+    until check_end.include? "end" and space.count(" ") == check_end.count(" ")
+        check_end = file_data[i]
+        function += check_end + "\n"
+        i += 1
+    end
+
+    return function.split("\n")
+end
+
+##
+# GET FUNCTION NAME
+#
+# description...
+#
+# @param line [type] description...
+# @param space [type] description...
+# @return function_comments [type] description...
+def get_function_name(line, space)
+    # function_name = line[/def (.*)\(/].gsub("def ", "").gsub("(", "").gsub("_", " ").upcase
+    function_comments = space + "##\n"
+    # function_comments += space + "# #{function_name}\n"
+    # function_comments += space + "#\n"
+    function_comments += space + "# description...\n"
+    function_comments += space + "#\n"
+
+    return function_comments
+end
+
+##
+# GET PARAMETERS
+#
+# description...
+#
+# @param line [type] description...
+# @param space [type] description...
+# @return parameters_string [type] description...
+def get_parameters(line, space)
+    parameters = line[/\(.*\)/].gsub("(", "").gsub(")", "").gsub(" ", "").split(",")
+    parameters_string = ""
+    parameters.each do |parameter|
+        parameters_string += space + "# @param #{parameter} [type] description...\n"
+    end
+    
+    return parameters_string
+end
+
+##
+# GET RETURN
+#
+# description...
+#
+# @param function [type] description...
+# @param space [type] description...
+# @return _value_string [type] description...
+def get_return(function, space)
+    return_value_string = ""
+    function.each do |line|
+        if line =~ /\s+return \w+/
+            return_value = line[/\s+return \w+/].gsub("return", "").gsub(" ", "")
+            # p return_value
+            return_value_string += space + "# @return #{return_value} [type] description...\n"
+        end
+    end
+
+    return return_value_string
+end
+
+##
+# GET SPACE
+#
+# description...
+#
+# @param string [type] description...
+# @return space [type] description...
+def get_space(string)
+    space = string[/\s*def/].gsub("def", "")
+
+    return space
+end
+
+##
+# BUILD COMMENTS
+#
+# description...
+#
+# @param line [type] description...
+# @param file_data [type] description...
+# @param i [type] description...
+# @return doc_string [type] description...
+def build_comments(line, file_data, i)
+    function = get_function(line, file_data, i)
+    space = get_space(function[0])
+    function_name = get_function_name(function[0], space)
+    parameters = get_parameters(function[0], space)
+    return_value = get_return(function, space)
+    doc_string = "\n"
+    doc_string += function_name
+    doc_string += parameters
+    doc_string += return_value
+    # print "\n"
+    
+    return doc_string
+end
+
+##
+# ADD DOCUMENTATION
+#
+# description...
+#
+# @param file_name [type] description...
+def add_documentation(file_name)
+    puts file_name
+    file = File.open(file_name, "r")
+    new_file = ""
+    file_data = file.read.split("\n")
+    file.close()
+
+    file_data.each_with_index do |line, i|
+        if line =~ /^\s*def [a-z]/ and !file_data[i-1].include? "#"
+            new_file += build_comments(line, file_data, i) + line + "\n"
+        else
+            new_file += line + "\n"
+        end
+    end
+
+    File.write(file_name, new_file)
+end
+
+if __FILE__ == $0
+    if ARGV[0] == "-all"
+        Dir.glob("*.rb").each{|file_name| add_documentation(file_name)}
+    elsif ARGV.size > 0
+        ARGV.each{|file_name| add_documentation(file_name)}
+    else
+        puts "USAGE"
+        puts "\truby-doc <filename>"
+        puts "\tEX. ruby-doc helloworld.rb"
+        puts "\t\nMULTIPLE FILES\n\n"
+        puts "\truby-doc hello.rb world.rb"
+        puts "\t\nALL RUBY FILES\n\n"
+        puts "\truby-doc -all"
+    end
+end

@@ -1,0 +1,15 @@
+#!/usr/bin/env ruby
+require "gss"
+require "launchy"
+
+if __FILE__ == $0
+    if ARGV[0]
+        (top_result, results) = Gss.return_results("wikipedia.org", ARGV[0])
+        Launchy.open(top_result[:url])
+    else
+        puts "USAGE"
+        puts "\twiki ruby\n\n"
+        puts "\tOR\n\n"
+        puts "\twiki \"ruby programming language\""
+    end
+end

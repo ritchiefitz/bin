@@ -1,0 +1,68 @@
+#!/usr/bin/env ruby
+require "nokogiri"
+require "open-uri"
+require "certified"
+
+class CustomMath
+    attr_accessor :url, :noko, :math_info
+
+    ##
+    # INITIALIZE
+    #
+    # This builds the url. Gets the site and returns the math.
+    #
+    # @param equation [type] description...
+    def initialize(equation)
+        equation = equation.gsub("+", "%2B").gsub("^", "%5E").gsub(" ", "")
+        @url = "https://www.google.com/search?q=#{equation}"
+        # puts @url
+        @noko = Nokogiri::HTML(open(@url))
+        @math_info = get_math()
+    end
+
+
+    ##
+    # GET MATH
+    #
+    # This finds and returns the math for the given equation.
+    #
+    # @return string [String] this returns the math for the given equation.
+    def get_math()
+        return @noko.css("div#topstuff h2")[0].text
+    end
+
+    ##
+    # PRINT MATH
+    #
+    # This will print out all the info we have in math_info.
+    #
+    def print_math()
+        puts "", @math_info
+    end
+
+
+    ##
+    # PRINT HTML MATH
+    #
+    # This is used to print out what the first thing you are
+    # getting is.
+    #
+    def print_html_math()
+        @noko.css("div#topstuff > *").each{|e| puts e}
+    end
+
+end
+
+if __FILE__ == $0
+    if ARGV[0]
+        math_object = CustomMath.new(ARGV[0])
+        math_object.print_math
+        # math_object.print_html_math
+        # puts math_object.noko
+    else
+        puts "USAGE"
+        puts "\tmath \"100*5/2\"\n\n"
+        puts "\tOR\n\n"
+        puts "\tmath \"1+1\""
+    end
+end

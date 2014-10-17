@@ -1,0 +1,67 @@
+#!/usr/bin/env ruby
+require "nokogiri"
+require "open-uri"
+require "certified"
+
+class Clock
+    attr_accessor :url, :noko, :time_info
+
+    ##
+    # INITIALIZE
+    #
+    # This builds the url. Gets the site and returns the time.
+    #
+    # @param place [type] description...
+    def initialize(place)
+        place = place.gsub(/[^\w\s]/, "").gsub(" ", "+")
+        @url = "https://www.google.com/search?q=time%3A+#{place}"
+        @noko = Nokogiri::HTML(open(@url))
+        @time_info = get_time()
+    end
+
+
+    ##
+    # GET TIME
+    #
+    # This finds and returns the time for the given place.
+    #
+    # @return string [String] this returns the time for the given place.
+    def get_time()
+        return @noko.css("li.g:first-of-type table table")[0].text
+    end
+
+    ##
+    # PRINT time
+    #
+    # This will print out all the info we have in time_info.
+    #
+    def print_time()
+        puts "", @time_info
+    end
+
+
+    ##
+    # PRINT HTML TIME
+    #
+    # This is used to print out what the first thing you are
+    # getting is.
+    #
+    def print_html_time()
+        @noko.css("li.g:first-of-type").each do |e|
+            puts e
+        end
+    end
+
+end
+
+if __FILE__ == $0
+    if ARGV[0]
+        dict = Clock.new(ARGV[0])
+        dict.print_time
+    else
+        puts "USAGE"
+        puts "\tclock \"Rexburg, ID\"\n\n"
+        puts "\tOR\n\n"
+        puts "\tclock Austin"
+    end
+end

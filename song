@@ -1,0 +1,184 @@
+#!/usr/bin/env ruby
+
+require "set"
+require "gss"
+require "nokogiri"
+require "open-uri"
+require 'open_uri_redirections'
+require "certified"
+require 'ruby-progressbar'
+require "net/http"
+require "uri"
+require "fileutils"
+require "shellwords"
+
+module MusicDownload
+	def self.top_songs(song_title, song_artist="", progress)
+		search = song_title.gsub(" ", "+")
+
+		(top_result, results) = Gss.return_results("pandora.com", "#{search}")
+
+		songs = []
+
+		results.each_with_index do |site, i|
+			start = site[:url].index("a.com/") + 6
+			song_info = site[:url][start..-1].split("/")
+
+			if song_info.size != 3
+				next
+			end
+
+			song = Hash.new
+
+			if song_info[2].include? "&sa"
+				end_str = song_info[2].index("&sa") - 1
+				song[:name] = song_info[2][0..end_str].split("-").map(&:capitalize).join(" ")
+			else
+				song[:name] = song_info[2].split("-").map(&:capitalize).join(" ")
+			end
+
+			song[:album] = song_info[1].split("-").map(&:capitalize).join(" ")
+			song[:artist] = song_info[0].split("-").map(&:capitalize).join(" ")
+			song[:url] = site[:url]
+
+			songs << song
+		end
+
+		return songs
+	end
+
+	def self.available_songs(song_info)
+		path = "/Users/ritchiefitzgerald/Music/pandora/#{song_info[:artist]}/#{song_info[:album]}/"
+
+		if File.exists? "#{path}#{song_info[:name]}.mp3"
+			puts "Song Already Downloaded!"
+			exit(0)
+		end
+
+		song_string = song_info[:name] + "+" + song_info[:artist]
+		# puts "Song String: " + song_string
+		(top_result, results) = Gss.return_results("mp3skull.com", song_string.gsub(" ", "+"))
+		# puts "Top Result: #{top_result[:url]}"
+		noko = Nokogiri::HTML(open(top_result[:url]))
+		songs_to_download = []
+
+		noko.css("div#song_html").each_with_index do |song, i|
+			begin
+				skull_title = song.css("div#right_song > div:first-child").text.gsub(/[^\w\s]/, "").downcase
+				# puts "skull_title: #{skull_title}"
+				
+				if skull_title.include? "remix" or skull_title.include? "acoustic" or skull_title.include? "live"
+					next
+				end
+
+				skull_url = song.css("div#right_song a:first-of-type")[0]["href"]
+
+				# puts "Song: #{song_to_download}"
+
+				songs_to_download << skull_url
+			rescue
+				next
+			end
+		end
+
+		# puts "Songs: #{songs_to_download}"
+
+		download_song(songs_to_download, song_info, path)
+	end
+
+	def self.download_song(urls, song_info, path)
+
+		urls.each do |url|
+			begin
+				download(url, path, song_info)
+
+			    if File.exists? "#{path}#{song_info[:name]}.mp3"
+			    	break
+			    end
+
+			rescue
+				next
+			end
+		end
+
+		if File.exists? "#{path}#{song_info[:name]}.mp3"
+			puts "Thanks for downloading!"
+		else
+			puts "Could not be downloaded."
+		end
+	end
+
+	def self.download(url, path, download_info)
+		# puts url
+
+		url_base = url.split('/')[2]
+		url_path = '/'+url.split('/')[3..-1].join('/')
+		url_ext = url[-3..-1]
+		 
+		Net::HTTP.start(url_base) do |http|
+		    response = http.request_head(URI.escape(url_path))
+		    total_size = response["content-length"].to_i
+
+		    puts "Total Size: #{total_size}"
+		    if total_size < 3000000 or total_size > 10000000 and url[-3..-1] == "mp3"
+		    	next
+		    end
+
+		    pbar = ProgressBar.create(:title => "Progress", :total => total_size, :format => '%a <%B> %p%% %t')
+		    FileUtils.mkdir_p path
+		    File.open("#{path}#{download_info[:name]}.#{url_ext}", 'wb') do |f|
+		        http.get(URI.escape(url_path)) do |bytes|
+		            f.write bytes
+		            # pbar.log "Site Address -> #{url}"
+		            pbar.progress += bytes.length
+		        end
+		    end
+		end
+	end
+
+	def self.generate_album_art(pandora_info)
+		path = "/Users/ritchiefitzgerald/Music/pandora/#{pandora_info[:artist]}/#{pandora_info[:album]}/"
+		noko = Nokogiri::HTML(open(pandora_info[:url]))
+		# puts noko
+		image_url = noko.css("img.img_cvr")[0]["src"]
+		ext = image_url[-3..-1]
+
+		download(image_url, path, pandora_info)
+
+		Dir.chdir path do
+			system "lame --tt \"#{pandora_info[:name]}\" --ta \"#{pandora_info[:artist]}\" --tl \"#{pandora_info[:album]}\" --ti \"#{pandora_info[:name]}.#{ext}\" \"#{pandora_info[:name]}.mp3\" \"#{pandora_info[:name]}-1.mp3\""
+			File.delete("#{pandora_info[:name]}.mp3")
+			FileUtils.mv("#{pandora_info[:name]}-1.mp3", "#{pandora_info[:name]}.mp3")
+
+			Dir.glob("*.*").each do |file|
+				unless file.include? "mp3"
+					File.delete(file)
+				end
+			end
+		end
+
+		puts "Generated Artwork!"
+	end
+end
+
+if __FILE__ == $0
+	if ARGV[0]
+		all_songs = MusicDownload.top_songs(ARGV[0], ARGV[1], :progress => true)
+
+		all_songs.each_with_index do |song, i|
+			print "#{i+1}. "
+			puts "Name:   #{song[:name]}", "   Album:  #{song[:album]}", "   Artist: #{song[:artist]}\n", ""
+		end
+
+		print "Enter song number: "
+		choice = $stdin.gets.chomp.to_i
+
+		available_songs = MusicDownload.available_songs(all_songs[choice-1])
+		MusicDownload.generate_album_art(all_songs[choice-1])
+	else
+		puts "Usage:"
+		puts "\n\tsong \"<song-description>\""
+		puts "\tsong \"I Want It That Way\""
+		puts "\tsong \"Move Along American Rejects\"\n\n"
+	end
+end

@@ -1,0 +1,48 @@
+#!/usr/bin/env ruby
+def make_command(file_path, command_path, header)
+  array = []
+  array << header
+
+  File.open(file_path, "r").each_line{|line| array << line}
+  File.open(command_path, "w+") do |fo|
+    array.each{|line| fo.puts line}
+  end
+
+  File.chmod(0775, command_path)
+end
+
+if __FILE__ == $0
+  puts ARGV
+  ARGV.each do |filename|
+    unless File.file?(filename)
+      next
+    end
+
+    accepted_formats = [".py", ".rb", ".sh"]
+    ext = File.extname(filename)
+    unless accepted_formats.include? ext
+      next
+    end
+
+
+    fileType = ""
+
+    case ext
+    when ".rb"
+      fileType = "ruby"
+    when ".py"
+      fileType = "python"
+    when ".sh"
+      fileType = "bash"
+    else
+      puts "I messed up!"
+      exit(0)
+    end
+
+    # #!/usr/bin/env ruby
+    header = "#!/usr/bin/env #{fileType}\n"
+    command_path = "/Users/ritchiefitzgerald/bin/" + filename.gsub(ext, "")
+
+    make_command(filename, command_path, header)
+  end
+end
