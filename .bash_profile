@@ -27,6 +27,8 @@ alias cl="clear"
 alias ll="ls -l"
 alias subl="subl ."
 alias brc="source ~/.bash_profile"
+alias updatedb="sudo /usr/libexec/locate.updatedb"
+alias delDS="find . -name '*.DS_Store' -type f -delete"
 
 PS1="\[\e[1;32m\]\u:\[\e[00m\]\[\e[1;33m\]\w\[\e[00m\] \[\e[1;32m\]\$\[\e[00m\] "
 
@@ -44,29 +46,20 @@ function c() {
     IFS=$SAVEIFS
 }
 
-function cbeta() {
-    # IFS breaks on spaces. Change it.
-    SAVEIFS=$IFS
-    IFS=$(echo -e '\n\b')
+function ip-address() {
+    echo "IP Address: \c"
+    ifconfig | sed '/netmask/!d; /broadcast/!d' | awk '{print $2}'
+}
 
-    directories=`find ~/Documents -type d -name "$1" | awk '(NR == 1 || length < length(shortest)) { shortest = $0 } END { print shortest }'`
-    # TODO add options if not correct folder.
-
-    cd $directories
-
-    # Restore default settings
-    IFS=$SAVEIFS
+# This will list members of a group.
+function group() {
+    dscl . -list /Users | while read user; do printf "$user "; dsmemberutil checkmembership -U "$user" -G "$*"; done | grep "is a member" | cut -d " " -f 1;
 }
 
 function cbase(){
     PS1="\[\e[1;32m\]\u:\[\e[00m\]\[\e[1;33m\]\W\[\e[00m\] \[\e[1;32m\]\$\[\e[00m\] "	
 }
 
-function cBaseRevert(){
+function cbaseu(){
     PS1="\[\e[1;32m\]\u:\[\e[00m\]\[\e[1;33m\]\w\[\e[00m\] \[\e[1;32m\]\$\[\e[00m\] "	
-}
-
-function fbin () {
-    cd "/Users/ritchiefitzgerald/bin"
-    cbase;
 }
