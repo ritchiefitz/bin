@@ -1,0 +1,87 @@
+#!/usr/bin/env ruby
+def router_name(str)
+	index_par = str.index("(") ? str.index("(") : false
+	index_pou = str.index("#") ? str.index("#") : false
+
+	if index_par and index_pou
+		return str[0...index_par]
+	elsif index_pou
+		return str[0...index_pou]
+	else
+		return false
+	end
+end
+
+def build_file(filename)
+	new_lines = []
+
+	lines = File.open(filename).read
+	lines.gsub!(/\r\n?/, "\n")
+	i = 0
+	lines.each_line do |line|
+		if line =~ /#/
+			if line =~ /#\s*sh/ or line =~ /debug / or line.length <= 4
+				next
+			end
+			old_name = new_lines[-1] =~ /#/ ? router_name(new_lines[-1]) : false
+			new_name = router_name(line)
+
+			if not old_name.eql? new_name
+				new_lines << "end" if not new_lines[-1] =~ /------/ and new_lines.size > 0
+
+				new_lines << "\n" + new_name
+				new_lines << "------------------\nconf t\n"
+			end
+			
+			new_lines << line
+		elsif line =~ /^Step / or line =~ /^step /
+			new_lines << "end" if not new_lines[-1] =~ /------/ and new_lines.size > 0
+
+			new_lines << "\n" + line
+			new_lines << "---------------------------------------\n"
+		elsif line =~ /^Part / or line =~ /^part /
+			new_lines << "end" if not new_lines[-1] =~ /------/ and new_lines.size > 0
+
+			new_lines << "\n" + line
+			new_lines << "-------------------------\n"
+		end
+		i += 1
+
+	end
+
+	new_lines = new_lines.map{|line| line =~ /#/ ? remove_prompt(line) : line}
+
+	# Use this for debugging
+	# new_lines.each do |line|
+	# 	puts line
+	# end
+
+	write_file(filename, new_lines)
+end
+
+def write_file(filename, lines)
+	File.open(filename, "w+") do |f|
+		lines.each{|line| f.puts line}
+	end
+end
+
+def remove_prompt(line)
+	index_space = line.index("#")+1
+	return line[index_space] == " " ? line[index_space+1...-1] : line[index_space...-1]
+end
+
+def main()
+	if ARGV[0]
+		build_file(ARGV[0])
+	else
+		puts "USAGE"
+		puts "----------------------------------"
+		puts "\tbuild_lab \"filepath\""
+		puts
+		puts "\tfilepath - this needs to be used on a lab from 240 or 241"
+	end
+end
+
+if __FILE__ == $0
+	main()
+end

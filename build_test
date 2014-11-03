@@ -1,0 +1,205 @@
+#!/usr/bin/env ruby
+require 'nokogiri'
+require 'date'
+
+##
+# This creates the header of our base html file.
+#
+# @param title   String the title for the page and main h1.
+# @param chapter String name of the chapter.
+# @return        String contains the header html.
+def getHeader(title, chapter)
+	return %Q{
+<!DOCTYPE html>
+<html>
+	<head>
+		<title>#{title}</title>
+		<link href="../modules/style.css" type="text/css" rel="stylesheet"/>
+		<script type="text/javascript" src="../modules/jquery-2.1.1.min.js"></script>
+		<script type="text/javascript" src="../modules/script.js"></script>
+		<meta http-equiv="Content-Type" content="text/html;charset=utf-8" />
+	</head>
+	<body>
+		<header>
+			<form id="checkbox">
+				<input type="button" name="testTake" value="Take Test" id="testTake"></input>
+				<!--<label for="testTake">Take Test</label>-->
+			</form>
+
+			<h1>#{title}</h1>
+
+			<form name="myForm" id="selectChapter">
+				<select name="mySelect" onchange="gotoPage()">
+				</select>
+			</form>
+		</header>
+
+		<div class="grade">
+			<div class="close">X</div>
+			<h3>You Scored</h3>
+			<p><span class="correct"></span>/<span class="total"></span> = <span class="answer"></span>%</p>
+		</div>
+
+		<h2 id="#{chapter.downcase.gsub(/\s*/, "")}">#{chapter}</h2>
+		<!-- Ruby Header Ends -->
+	}
+end
+
+
+##
+# This creates the body of the html document.
+#
+# @param   file String contains the name of the file to create the html body from
+# @return  noko String contains the content for the html document.
+def getBody(file)
+	f = File.open(file)
+	# Modify html to work with our setup.
+	noko = filterNoko(Nokogiri::HTML(f))
+	f.close()
+
+	return noko.to_html
+end
+
+
+##
+# This creates the footer of the document.
+# 
+# @return String contains the footer html.
+def getFooter()
+	return %Q{
+		<!-- Ruby Footer Starts -->
+		<footer>Created By Ritchie Fitzgerald, Bryce, Richard Henke. Copyright &copy; #{Date.today.strftime("%Y")}</footer>
+	</body>
+</html>
+	}
+end
+
+
+##
+# This modifies the original html to work with our setup.
+#
+# @param  noko Nokogiri contains the nokogiri object that holds the original html.
+# @return noko Nokogiri contains the nokogiri object that holds the modified html.
+def filterNoko(noko)
+	# Makes it easier for jquery to link to this element.
+	noko.css(".examQuestionTable > tbody > tr:first-of-type > td:first-of-type img").each do |element|
+		element["class"] = "question-image"
+	end
+
+	# We don't want to see the wrong answers initially.
+	noko.css(".examAnswerTable img[src*=delete]").remove()
+
+	# Modifies all the image paths to be correct, and we change all the error images into
+	# the correct images.
+	noko.css("img[src*=check], img[src*=delete]").each do |element|
+		element["src"] = "../Images/check.png"
+	end
+
+	return noko
+end
+
+
+##
+# This takes all the html and removes anything that shouldn't be there.
+#
+# @param  doc_str String contains the original html file.
+# @return         String the fixed html file
+def create_doc(doc_str)
+	doc_array = doc_str.split("\n")
+	doc_array_mod = []
+	doc_array.each do |line|
+		if (line.include? "PUBLIC") or (line.include? "html" and line.include? "body") then next end
+		doc_array_mod << line
+	end
+
+	return doc_array_mod.join("\n")
+end
+
+
+##
+# Use this to insert new questions at a specific div.
+#
+# @param to      String the file to write to.
+# @param from    String the file to read from.
+# @param chapter String the name for the section of new questions.
+# @return        String the new html file with the new questions inserted.
+def insertQuestions(to, from, chapter)
+	fTo = File.open(to)
+	fFrom = File.open(from)
+	write_noko = Nokogiri::HTML(fTo)
+	read_noko = filterNoko(Nokogiri::HTML(fFrom))
+	write_noko.css(".insert-here").each do |node|
+		node.replace "<h2 id='#{chapter.downcase.gsub(/\s*/, '')}'>#{chapter}</h2>\n" + read_noko.to_html + "\n<div class='insert-here' style='display:none;'></div>\n"
+	end
+
+	fTo.close()
+	fFrom.close()
+	# puts write_noko.to_html
+	return write_noko.to_html
+end
+
+
+##
+# Displays how to use the program.
+#
+def usage()
+	puts "USAGE"
+	puts "-----------------------------------"
+	puts "First Usage: build_test <filename>.html <name-for-questions>"
+	puts "Example:     build_test Test1.html \"Chapter 1\""
+	puts
+	puts "Insert More: build_test <original-filename>.html -i <filename-more-questions>.html <name-for-questions>"
+	puts "Example:     build_test Test1.html -i chapter2questions.html \"Chapter 2\""
+	puts
+	puts "Explanation"
+	puts "-----------------------------------"
+	puts "-i                    Means insert the following file into original file."
+	puts "name-for-questions    Should always start with \"Chapt\" for the automatic jumping to work."
+end
+
+
+##
+# Runs code to create a working testing html file.
+#
+def main()
+	if ARGV[0]
+		# Do this if we are supposed to insert new questions.
+		if File.file?(ARGV[0]) and ARGV.any?{|arg| arg == "-i"} and File.file?(ARGV[2]) and ARGV[3]
+			to = ARGV[0]
+			from = ARGV[2]
+			chapter = ARGV[3]
+
+			# Add more questions to the base html file.
+			doc = insertQuestions(to, from, chapter)
+
+			# Save new file.
+			File.open(to, 'w'){|file| file.write(doc)}
+			exit
+		end
+
+		# Do this if we are building a new html file.
+		if File.file?(ARGV[0]) and not ARGV.any?{|arg| arg == "-i"} and ARGV[1]
+			file = ARGV[0]
+			chapter = ARGV[1]
+			title = File.basename(file, ".*")
+
+			# Create Base HTML file.
+			header = getHeader(title, chapter)
+			body = getBody(file)
+			footer = getFooter()
+			doc = create_doc(header + body + "\n<div class='insert-here' style='display:none;'></div>\n" + footer)
+
+			# Save file.
+			File.open(file, 'w'){|f| f.write(doc)}
+			exit
+		end
+
+		usage()
+	else
+		usage()
+	end
+end
+
+if __FILE__ == $0
+	main()
+end

@@ -35,7 +35,11 @@ function c() {
     SAVEIFS=$IFS
     IFS=$(echo -e '\n\b')
 
-    directories=`find ~/Documents -type d -name "$1" | awk '(NR == 1 || length < length(shortest)) { shortest = $0 } END { print shortest }'`
+    if [ $# -ne 2 ]; then
+        directories=`find ~/Documents -type d -name "$1" | awk '(NR == 1 || length < length(shortest)) { shortest = $0 } END { print shortest }'`
+    else
+        directories=`find $1 -type d -name "$2" | awk '(NR == 1 || length < length(shortest)) { shortest = $0 } END { print shortest }'`
+    fi
     # TODO add options if not correct folder.
 
     cd $directories
@@ -49,7 +53,11 @@ function cbeta() {
     SAVEIFS=$IFS
     IFS=$(echo -e '\n\b')
 
-    directories=`find ~/Documents -type d -name "$1" | awk '(NR == 1 || length < length(shortest)) { shortest = $0 } END { print shortest }'`
+    if [ $# -ne 2 ]; then
+        directories=`find ~/Documents -type d -name "$1" | awk '(NR == 1 || length < length(shortest)) { shortest = $0 } END { print shortest }'`
+    else
+        directories=`find $1 -type d -name "$2" | awk '(NR == 1 || length < length(shortest)) { shortest = $0 } END { print shortest }'`
+    fi
     # TODO add options if not correct folder.
 
     cd $directories
