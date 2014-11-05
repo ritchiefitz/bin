@@ -57,7 +57,7 @@ def getBody(file)
 	noko = filterNoko(Nokogiri::HTML(f))
 	f.close()
 
-	return noko.to_html
+	return "\n<div class='chapter-questions'>\n" + noko.to_html + "\n</div>\n"
 end
 
 
@@ -129,12 +129,12 @@ def insertQuestions(to, from, chapter)
 	write_noko = Nokogiri::HTML(fTo)
 	read_noko = filterNoko(Nokogiri::HTML(fFrom))
 	write_noko.css(".insert-here").each do |node|
-		node.replace "<h2 id='#{chapter.downcase.gsub(/\s*/, '')}'>#{chapter}</h2>\n" + read_noko.to_html + "\n<div class='insert-here' style='display:none;'></div>\n"
+		node.replace "<h2 id='#{chapter.downcase.gsub(/\s*/, '')}'>#{chapter}</h2>\n<div class='chapter-questions'>\n" + read_noko.to_html + "\n</div>\n<div class='insert-here' style='display:none;'></div>\n"
 	end
 
 	# remove duplicate questions.
 	seen = Hash.new(0)
-	write_noko.css(".examQuestionTable").each{|n| n.unlink if (seen[n.to_html] += 1) > 1}
+	write_noko.css(".examQuestionTable").each{|n| n.unlink if (seen[n.css(".exam_question_content")[0].to_html] += 1) > 1}
 
 	fTo.close()
 	fFrom.close()
