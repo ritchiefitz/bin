@@ -132,6 +132,10 @@ def insertQuestions(to, from, chapter)
 		node.replace "<h2 id='#{chapter.downcase.gsub(/\s*/, '')}'>#{chapter}</h2>\n" + read_noko.to_html + "\n<div class='insert-here' style='display:none;'></div>\n"
 	end
 
+	# remove duplicate questions.
+	seen = Hash.new(0)
+	write_noko.css(".examQuestionTable").each{|n| n.unlink if (seen[n.to_html] += 1) > 1}
+
 	fTo.close()
 	fFrom.close()
 	# puts write_noko.to_html
