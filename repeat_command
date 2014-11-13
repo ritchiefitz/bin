@@ -11,5 +11,6 @@ if __FILE__ == $0
 
     lines.each do |line|
       system "#{command} #{line}"
+      puts "#{command} #{line}"
     end
 end
