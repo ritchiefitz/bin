@@ -51,13 +51,13 @@ end
 #
 # @param   file String contains the name of the file to create the html body from
 # @return  noko String contains the content for the html document.
-def getBody(file)
+def getBody(file, chapter)
 	f = File.open(file)
 	# Modify html to work with our setup.
 	noko = filterNoko(Nokogiri::HTML(f))
 	f.close()
 
-	return "\n<div class='chapter-questions'>\n" + noko.to_html + "\n</div>\n"
+	return "\n<div class='chapter-questions #{chapter.downcase.gsub(/\s*/, "")}'>\n" + noko.to_html + "\n<div class='insert-questions' style='display:none;'></div></div>\n</div>\n"
 end
 
 
@@ -95,6 +95,10 @@ def filterNoko(noko)
 		element["src"] = "../Images/check.png"
 	end
 
+	noko.css(".examQuestionSeparator").each do |n|
+		n.unlink
+	end
+
 	return noko
 end
 
@@ -117,19 +121,46 @@ end
 
 
 ##
-# Use this to insert new questions at a specific div.
+# Use this to insert new questions and create a new chapter.
 #
 # @param to      String the file to write to.
 # @param from    String the file to read from.
 # @param chapter String the name for the section of new questions.
 # @return        String the new html file with the new questions inserted.
-def insertQuestions(to, from, chapter)
+def insertChapter(to, from, chapter)
 	fTo = File.open(to)
 	fFrom = File.open(from)
 	write_noko = Nokogiri::HTML(fTo)
 	read_noko = filterNoko(Nokogiri::HTML(fFrom))
-	write_noko.css(".insert-here").each do |node|
-		node.replace "<h2 id='#{chapter.downcase.gsub(/\s*/, '')}'>#{chapter}</h2>\n<div class='chapter-questions'>\n" + read_noko.to_html + "\n</div>\n<div class='insert-here' style='display:none;'></div>\n"
+	write_noko.css(".insert-chapter").each do |node|
+		node.replace "<h2 id='#{chapter.downcase.gsub(/\s*/, '')}'>#{chapter}</h2>\n<div class='chapter-questions #{chapter.downcase.gsub(/\s*/, '')}'>\n" + read_noko.to_html + "\n<div class='insert-questions' style='display:none;'></div>\n</div>\n<div class='insert-chapter' style='display:none;'></div>\n"
+	end
+
+	# remove duplicate questions.
+	seen = Hash.new(0)
+	write_noko.css(".examQuestionTable").each{|n| n.unlink if (seen[n.css(".exam_question_content")[0].to_html] += 1) > 1}
+
+	fTo.close()
+	fFrom.close()
+	# puts write_noko.to_html
+	return write_noko.to_html
+end
+
+
+##
+# Use this to insert new questions into a chapter.
+#
+# @param to      String the file to write to.
+# @param from    String the file to read from.
+# @param chapter String the name for the section of new questions.
+# @return        String the new html file with the new questions inserted.
+def addToChapter(to, from, chapter)
+	fTo = File.open(to)
+	fFrom = File.open(from)
+	write_noko = Nokogiri::HTML(fTo)
+	read_noko = filterNoko(Nokogiri::HTML(fFrom))
+	write_noko.css(".#{chapter.downcase.gsub(/\s*/, '')} .insert-questions").each do |node|
+		node.replace read_noko.to_html + "\n<div class='insert-questions' style='display:none;'></div>\n"
 	end
 
 	# remove duplicate questions.
@@ -147,18 +178,34 @@ end
 # Displays how to use the program.
 #
 def usage()
+	puts
 	puts "USAGE"
 	puts "-----------------------------------"
 	puts "First Usage: build_test <filename>.html <name-for-questions>"
 	puts "Example:     build_test Test1.html \"Chapter 1\""
 	puts
-	puts "Insert More: build_test <original-filename>.html -i <filename-more-questions>.html <name-for-questions>"
-	puts "Example:     build_test Test1.html -i chapter2questions.html \"Chapter 2\""
+	puts "Insert Chapter: build_test <original-filename>.html -i <filename-more-questions>.html <name-for-questions>"
+	puts "Example:        build_test Test1.html -i chapter2questions.html \"Chapter 2\""
+	puts
+	puts "Add Questions: build_test <original-filename>.html -a <filename-more-questions>.html <chapter-to-add-to>"
+	puts "Example:       build_test Test1.html -a chapter2questions.html chapter2"
+	puts
+	puts "See Chapter ID's: build_test -pid <original-filename>.html"
+	puts "Example:          build_test -pid Test1.html"
+	puts "Output:           CHAPTER ID's"
+	puts "                  ------------------"
+	puts "                  chapter1"
+	puts "                  chapter2"
+	puts
 	puts
 	puts "Explanation"
 	puts "-----------------------------------"
-	puts "-i                    Means insert the following file into original file."
+	puts "-i                    Means insert the following file into original file as a new chapter."
+	puts "-a                    Means insert the following file into original file as an addition to a chapter."
+	puts "-pid                  Prints the chapter ids so that you know how to add to them."
 	puts "name-for-questions    Should always start with \"Chapt\" for the automatic jumping to work."
+	puts "chapter-to-add-to     Must be a chapter ID. @see -pid"
+	puts
 end
 
 
@@ -167,14 +214,28 @@ end
 #
 def main()
 	if ARGV[0]
-		# Do this if we are supposed to insert new questions.
+		# Do this if we are supposed to insert a new chapter with questions.
 		if File.file?(ARGV[0]) and ARGV.any?{|arg| arg == "-i"} and File.file?(ARGV[2]) and ARGV[3]
 			to = ARGV[0]
 			from = ARGV[2]
 			chapter = ARGV[3]
 
 			# Add more questions to the base html file.
-			doc = insertQuestions(to, from, chapter)
+			doc = insertChapter(to, from, chapter)
+
+			# Save new file.
+			File.open(to, 'w'){|file| file.write(doc)}
+			exit
+		end
+
+		# Do this if we are supposed to insert new questions into an old chapter.
+		if File.file?(ARGV[0]) and ARGV.any?{|arg| arg == "-a"} and File.file?(ARGV[2]) and ARGV[3]
+			to = ARGV[0]
+			from = ARGV[2]
+			chapter = ARGV[3]
+
+			# Add more questions to the base html file.
+			doc = addToChapter(to, from, chapter)
 
 			# Save new file.
 			File.open(to, 'w'){|file| file.write(doc)}
@@ -189,12 +250,27 @@ def main()
 
 			# Create Base HTML file.
 			header = getHeader(title, chapter)
-			body = getBody(file)
+			body = getBody(file, chapter)
 			footer = getFooter()
-			doc = create_doc(header + body + "\n<div class='insert-here' style='display:none;'></div>\n" + footer)
+			doc = create_doc(header + body + "\n<div class='insert-chapter' style='display:none;'></div>\n" + footer)
 
 			# Save file.
 			File.open(file, 'w'){|f| f.write(doc)}
+			exit
+		end
+
+		if ARGV.any?{|arg| arg == "-pid"} and File.file?(ARGV[1])
+			chapters = Nokogiri::HTML(File.open(ARGV[1]))
+
+			puts
+			puts "CHAPTER ID's"
+			puts "------------------------------"
+
+			chapters.css("[id*=chapt]").each do |chapter|
+				puts chapter["id"]
+			end
+
+			puts
 			exit
 		end
 
