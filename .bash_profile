@@ -27,8 +27,6 @@ alias cl="clear"
 alias ll="ls -l"
 alias subl="subl ."
 alias brc="source ~/.bash_profile"
-alias updatedb="sudo /usr/libexec/locate.updatedb"
-alias delDS="find . -name '*.DS_Store' -type f -delete"
 
 PS1="\[\e[1;32m\]\u:\[\e[00m\]\[\e[1;33m\]\w\[\e[00m\] \[\e[1;32m\]\$\[\e[00m\] "
 
@@ -37,50 +35,48 @@ function c() {
     SAVEIFS=$IFS
     IFS=$(echo -e '\n\b')
 
-    if [ $# -ne 2 ]; then
-        directories=`find ~/Documents -type d -name "$1" | awk '(NR == 1 || length < length(shortest)) { shortest = $0 } END { print shortest }'`
+    if [[ $2 ]]; then
+        testd=`cruby $1 $2`
     else
-        directories=`find $1 -type d -name "$2" | awk '(NR == 1 || length < length(shortest)) { shortest = $0 } END { print shortest }'`
+        testd=`cruby $1`
     fi
-    # TODO add options if not correct folder.
+        #statements
 
-    cd $directories
+    echo $testd
+    cd $testd
+    cbase;
 
-    # Restore default settings
     IFS=$SAVEIFS
 }
-
 
 function cbeta() {
     # IFS breaks on spaces. Change it.
     SAVEIFS=$IFS
     IFS=$(echo -e '\n\b')
 
-    if [ $# -ne 2 ]; then
-        directories=`find ~/Documents -type d -name "$1" | awk '(NR == 1 || length < length(shortest)) { shortest = $0 } END { print shortest }'`
+    if [[ $2 ]]; then
+        testd=`cruby $1 $2`
     else
-        directories=`find $1 -type d -name "$2" | awk '(NR == 1 || length < length(shortest)) { shortest = $0 } END { print shortest }'`
+        testd=`cruby $1`
     fi
-    # TODO add options if not correct folder.
+        #statements
 
-    cd $directories
-}
+    echo $testd
+    cd $testd
+    cbase;
 
-function ip-address() {
-    echo "IP Address: \c"
-    ifconfig | sed '/netmask/!d; /broadcast/!d' | awk '{print $2}'
-}
-
-
-# This will list members of a group.
-function group() {
-    dscl . -list /Users | while read user; do printf "$user "; dsmemberutil checkmembership -U "$user" -G "$*"; done | grep "is a member" | cut -d " " -f 1;
+    IFS=$SAVEIFS
 }
 
 function cbase(){
     PS1="\[\e[1;32m\]\u:\[\e[00m\]\[\e[1;33m\]\W\[\e[00m\] \[\e[1;32m\]\$\[\e[00m\] "	
 }
 
-function cbaseu(){
+function cBaseRevert(){
     PS1="\[\e[1;32m\]\u:\[\e[00m\]\[\e[1;33m\]\w\[\e[00m\] \[\e[1;32m\]\$\[\e[00m\] "	
+}
+
+function fbin () {
+    cd "/Users/ritchiefitzgerald/bin"
+    cbase;
 }

@@ -1,0 +1,139 @@
+#!/usr/bin/env ruby
+
+##
+# This returns the directory with the shortest matching path
+# out of the directories provided.
+#
+# @param  directories  Array  the directories to search through.
+# @param  directory    String the directory to search for.
+# @return shortest_dir String the directory with the shortest path.
+def find_shortest_path(directories, directory)
+	# set standard to compare against.
+	shortest_dir = directories[0]
+	directories.each do |check_dir|
+		# if it does not start with users we don't want it.
+		next unless (check_dir =~ /^\/Users\//)
+
+		# if check_dir is shorter than shortest file and matches regex and is a directory
+		# make check_dir new shortest file.
+		if check_dir.length < shortest_dir.length and check_dir =~ /#{directory}$/ and File.directory?(check_dir)
+			shortest_dir = check_dir
+		end
+	end
+
+    return shortest_dir
+end
+
+
+##
+# This will modify the search term so that if they added a star
+# it will add a "." in front so that ruby regex will work.
+#
+# @param  str    String the string to modify.
+# @return newstr String the modified string.
+def modify_star(str)
+	newstr = ""
+	str.split("").each do |c|
+		# if character is a * add a . in front for ruby to use regex.
+		newstr += (c == "*") ? "."+c : c
+	end
+
+	return newstr
+end
+
+
+##
+# This will search beneath a parent dir for a child directory.
+# Useful if you use the same directory structure for different projects.
+#
+# @param parent_dir String the parent directory to search under.
+# @param child_dir  String the directory to search for.
+def search_beneath(parent_dir, child_dir)
+	# search for child directory under neath parent directory.
+	directories=`find #{parent_dir} -type d -name "#{child_dir}"`.split("\n")
+
+	# cd to the shortest path found.
+	puts find_shortest_path(directories, child_dir)
+end
+
+
+##
+# This will search .c_data to see if we have searched for this
+# directory before.
+#
+# @param directory String the directory to search for.
+# @return Boolean return whether we found a match or not.
+def search_file(directory)
+	unless File.file?("#{Dir.home}/.c_data")
+		# create .c_data if it does not exist.
+		File.open("#{Dir.home}/.c_data", "w") {}
+	else
+		lines = []
+		File.open("#{Dir.home}/.c_data").each_line do |line|
+			# if it matches regex add to lines.
+			lines << line if (line =~ /#{modify_star(directory)}$/)
+		end
+
+		if (lines[0])
+			# cd to the shortest path found.
+			puts find_shortest_path(lines, modify_star(directory))
+			return true
+		end
+	end
+
+	return false
+end
+
+
+##
+# This will use the locate command first, and if locate doesn't 
+# work it will use the find command to find the directory with
+# the shortest path.
+#
+# @param directory String the directory to search for.
+def hard_search(directory)
+	# search using locate first. Fastest Method.
+	directories = `locate #{directory}`.split("\n")
+
+	# if it wasn't found then use find.
+	if (directories.empty?)
+		directories = `find #{Dir.home} -type d -name "#{directory}"`.split("\n")
+
+		# if find couldn't find it the directory does not exist.
+		if (directories.empty?) then puts "\"#{directory}\" Directory does not exist!"; exit end
+	end
+	
+	# cd to the shortest path found.
+	shortest_path = find_shortest_path(directories, modify_star(directory))
+	puts shortest_path
+
+	# write new path to file.
+	File.open("#{Dir.home}/.c_data", "a"){|file| file.write(shortest_path + "\n")}
+
+	# sort the paths in .c_data.
+	system("sort #{Dir.home}/.c_data -o #{Dir.home}/.c_data")
+end
+
+
+def main()
+
+	if ARGV[0] and ARGV[1]
+		# search under parent directory argv[0] for child directory argv[1]
+		search_beneath(ARGV[0], ARGV[1])
+	elsif not ARGV[0]
+		# if they just typed "c" go home.
+		system('cd')
+	else
+		directory = ARGV[0]
+
+		# search .c_data to see if we have accessed that directory before.
+		unless search_file(directory)
+			# use locate and find commands to search the computer for directory.
+			hard_search(directory)
+		end
+	end
+end
+
+if __FILE__ == $0
+	main()
+end
