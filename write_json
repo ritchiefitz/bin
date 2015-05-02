@@ -1,0 +1,28 @@
+#!/usr/bin/env ruby
+require 'nokogiri'
+require 'json'
+
+def main()
+	noko_questions = Nokogiri::HTML(File.open(ARGV[0]))
+	questionTables = []
+
+	noko_questions.css(".examQuestionTable").each do |questionSection|
+		questionTable = {}
+		questionTable[:question] = questionSection.css(".exam_question_content")[0].inner_text
+		questionTable[:answers] = []
+
+		questionSection.css(".examAnswerTable img[src*=check]").each do |answer|
+			questionTable[:answers] << answer.parent.parent.css("td:last-child").inner_text
+		end
+
+		questionTables << questionTable
+	end
+
+	File.open("ultimate.json", "w") do |f|
+		f.write(JSON.pretty_generate(questionTables))
+	end
+end
+
+if __FILE__ == $0
+	main()
+end

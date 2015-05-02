@@ -1,0 +1,125 @@
+#!/usr/bin/env ruby
+class BinMath
+	def notBin(num, print=true)
+		if (print)
+			answer = ~num.to_i
+			print(num.to_i, answer)
+		else
+			return ~num.to_i
+		end
+	end
+
+	def andBin(num1, num2, print=true)
+		if (print)
+			answer = num1.to_i & num2.to_i
+			print(num1.to_i, answer, num2.to_i, "&")
+		else
+			return num1.to_i & num2.to_i
+		end
+	end
+
+	def orBin(num1, num2, print=true)
+		if (print)
+			answer = num1.to_i | num2.to_i
+			print(num1.to_i, answer, num2.to_i, "|")
+		else
+			return num1.to_i | num2.to_i
+		end
+	end
+
+	def xorBin(num1, num2, print=true)
+		if (print)
+			answer = num1.to_i ^ num2.to_i
+			print(num1.to_i, answer, num2.to_i, "^")
+		else
+			return num1.to_i ^ num2.to_i
+		end
+	end
+
+	def print(num1, answer=false, num2=false, type="~")
+		if (type != "~")
+			printf("\n  %08b\n", num1)
+			printf("%c %08b\n", type, num2)
+		else
+			printf("\n%c %08b\n", type, num1)
+		end
+
+		printf("-------------------\n")
+		printf("  %08b\n\n", answer)
+	end
+end
+
+def get_value(message, type="int")
+    print "\n#{message}"
+    value = $stdin.gets.chomp
+    return value
+end
+
+def clear_screen()
+    system "clear"
+    system "cls"
+end
+
+def main_prompt_commands()
+    puts
+    puts "COMMANDS"
+    puts "----------------------------------------------------------------------"
+    puts "   1.  and      - AND two numbers together"
+    puts "   2.  or       - OR two numbers together"
+    puts "   3.  xor      - XOR two numbers together"
+    puts "   4.  not      - NOT a number"
+    puts "   5.  cl       - Clear Screen"
+    puts "   6.  q        - Quit"
+end
+
+def main_prompt()
+	math = BinMath.new
+	previous_value = 0
+	main_prompt_commands()
+	while true
+        print "\n>> "
+        choice = $stdin.gets.chomp
+
+        case choice
+        when "1", "and", "&"
+        	until andValue1 = get_value("Enter Integer: ").to_i; end
+        	until andValue2 = get_value("Enter Integer: ").to_i; end
+        	math.andBin(andValue1, andValue2)
+        	int_value = math.andBin(andValue1, andValue2, false)
+        	printf("Integer Value: %d\n", int_value)
+        when "2", "or", "|"
+        	until orValue1 = get_value("Enter Integer: ").to_i; end
+        	until orValue2 = get_value("Enter Integer: ").to_i; end
+        	math.orBin(orValue1, orValue2)
+        	int_value = math.orBin(orValue1, orValue2, false)
+        	printf("Integer Value: %d\n", int_value)
+        when "3", "xor", "^"
+        	until xValue1 = get_value("Enter Integer: ").to_i; end
+        	until xValue2 = get_value("Enter Integer: ").to_i; end
+        	math.xorBin(xValue1, xValue2)
+        	int_value = math.xorBin(xValue1, xValue2, false)
+        	printf("Integer Value: %d\n", int_value)
+        when "4", "not", "~"
+        	until notNum = get_value("Enter Integer: ").to_i; end
+        	math.notBin(notNum)
+        	int_value = math.notBin(notNum, false)
+        	printf("Integer Value: %d\n", int_value)
+        when "5", "cl"
+            clear_screen()
+            main_prompt_commands()
+        when "6", "q"
+            exit(0)
+        else
+            puts
+            puts "Not Valid Choice! Please Choose Valid Choice!"
+        end
+	end
+end
+
+def main()
+	main_prompt()
+end
+
+if __FILE__ == $0
+	main()
+end

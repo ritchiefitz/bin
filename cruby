@@ -107,8 +107,12 @@ def hard_search(directory)
 	shortest_path = find_shortest_path(directories, modify_star(directory))
 	puts shortest_path
 
+	write_to_file(shortest_path)
+end
+
+def write_to_file(directory)
 	# write new path to file.
-	File.open("#{Dir.home}/.c_data", "a"){|file| file.write(shortest_path + "\n")}
+	File.open("#{Dir.home}/.c_data", "a"){|file| file.write(directory + "\n")}
 
 	# sort the paths in .c_data.
 	system("sort #{Dir.home}/.c_data -o #{Dir.home}/.c_data")
@@ -117,6 +121,7 @@ end
 
 def main()
 
+
 	if ARGV[0] and ARGV[1]
 		# search under parent directory argv[0] for child directory argv[1]
 		search_beneath(ARGV[0], ARGV[1])
@@ -124,12 +129,22 @@ def main()
 		# if they just typed "c" go home.
 		system('cd')
 	else
-		directory = ARGV[0]
+		if (ARGV[0] == "-a")
+			# Get current directory
+			pwd = `pwd`
 
-		# search .c_data to see if we have accessed that directory before.
-		unless search_file(directory)
-			# use locate and find commands to search the computer for directory.
-			hard_search(directory)
+			# If path is not in .c_data add path.
+			unless search_file(pwd)
+				write_to_file(pwd)
+			end
+		else
+			directory = ARGV[0]
+
+			# search .c_data to see if we have accessed that directory before.
+			unless search_file(directory)
+				# use locate and find commands to search the computer for directory.
+				hard_search(directory)
+			end
 		end
 	end
 end

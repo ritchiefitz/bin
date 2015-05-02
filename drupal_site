@@ -1,0 +1,68 @@
+#!/usr/bin/env ruby
+
+require "open-uri"
+require "ruby-progressbar"
+require "net/http"
+require "FileUtils"
+require "uri"
+
+def setup_drupal(sitename)
+	# SQL 2002 error
+	# mkdir /var/mysql
+	# ln -s /tmp/mysql.sock /var/mysql/mysql.sock
+	
+	db_name = sitename.gsub(".com", "").gsub(".org", "").gsub(".net", "")
+	site_title = db_name.capitalize
+	puts "Downloading Drupal...."
+	system("drush dl drupal --drupal-project-rename=#{sitename}")
+	FileUtils.cd("#{sitename}")
+	system("ln -s #{FileUtils.pwd} #{Dir.home}/Sites/#{sitename}")
+	puts "Installing Site...."
+	system("drush site-install standard --db-url='mysql://root:@localhost/#{db_name}' --site-name=#{site_title}")
+	rewrite_fix() # TODO Rewrite fix in .htaccess file. change Rewrite /drupal to Rewrite /
+	
+	puts "Adding site to host file...."
+	system("sudo sh -c \"echo \'127.0.0.1\tlocal.#{sitename}\' >> /etc/hosts\"")
+	puts "Restarting Apache...."
+	system("sudo apachectl restart")
+
+end
+
+def setup_theme(sitename)
+	theme_name = sitename.gsub(".com", "").gsub(".org", "").gsub(".net", "")
+	# system("drush en bootstrap -y")
+	# Dir.chdir("sites/all/themes") do 
+	# 	FileUtils.copy_entry 
+	# end
+end
+
+
+def setup_modules()
+	system("drush en views -y")
+	system("drush en views_ui -y")
+	system("drush en views_slideshow -y")
+	system("drush en views_slideshow_cycle -y")
+	system("drush en wysiwyg -y")
+	system("drush en path_auto -y")
+	system("drush en jquery_update -y")
+end
+
+def rewrite_fix()
+
+end
+
+def main()
+	if ARGV[0]
+		sitename = ARGV[0]
+		# setup_drupal(sitename)
+		FileUtils.cd("#{sitename}") # Testing Purposes
+		# setup_modules()
+		setup_theme(sitename)
+	else
+		puts "USUAGE"
+	end
+end
+
+if __FILE__ == $0
+	main()
+end

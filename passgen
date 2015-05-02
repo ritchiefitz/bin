@@ -1,0 +1,40 @@
+#!/usr/bin/env python
+import sys
+import random
+from random import randint
+
+class Password:
+	alpha = "abcdefghijklmnopqrstuvwxyz"
+	num = "1234567890"
+	alphaNum = "abcdefghijklmnopqrstuvwxyz1234567890"
+	punc = "@#$%"
+	allChar = "abcdefghijklmnopqrstuvwxyz1234567890@#$%"
+
+	def randomChar(self, string):
+		randNum = randint(0, len(string)-1)
+
+		if (string[randNum].isalpha()):
+			uppercase = randint(0, 1)
+
+			return string[randNum].upper() if (uppercase) else string[randNum]
+
+		return string[randNum]
+
+	def genPass(self, size):
+		password = ""
+
+		for i in range(int(size)):
+			password += self.randomChar(self.allChar)
+
+		return password
+
+
+
+
+def main():
+	password = Password()
+	print sys.argv[1]
+	print password.genPass(sys.argv[1])
+
+if __name__ == "__main__":
+	main()
