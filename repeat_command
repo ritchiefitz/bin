@@ -6,11 +6,27 @@ def read_newline_data(file_path)
 end
 
 if __FILE__ == $0
-    command = ARGV[0]
-    lines = read_newline_data(ARGV[1])
+	if ARGV[0]
+	    command = ARGV[0]
+	    lines = read_newline_data(ARGV[1])
 
-    lines.each do |line|
-      system "#{command} #{line}"
-      puts "#{command} #{line}"
-    end
+	    lines.each do |line|
+	    	begin
+	    		system "#{command} #{line}"
+	    		puts "#{command} #{line}"
+	    	rescue Exception => e
+	    		puts "Error: While executing following command."
+	    		puts "Command: #{command} #{line}"
+	    	end	    	
+	    end
+    else
+    	puts "Example Usage"
+    	puts "-----------------------"
+    	puts "repeat_command \"<command>\" <filename>"
+    	puts
+    	puts "repeat_command \"drush en \" drupal_modules.txt"
+    	puts
+    	puts "filename - must contain something on each line."
+	end
+
 end
